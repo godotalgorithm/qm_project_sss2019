@@ -2,7 +2,7 @@ import numpy as np
 np.set_printoptions(precision=1)
 
 def atom(ao_index):
-    '''Returns the atom index part of an atomic orbital index.
+    '''Calculates the atom index part of an atomic orbital index.
     
     Given an atomic orbital index, this function will return the index of the atom. Can be used to index into the atomic_coordinates array.
     
@@ -61,9 +61,9 @@ def hopping_energy(o1, o2, r12, model_parameters):
     Parameters
     ----------
     o1 : str
-        The orbital type of the first orbital
+        The orbital type of the first orbital (s, px, py, or pz)
     o2 : str
-        The orbital type of the second orbital
+        The orbital type of the second orbital (s, px, py, or pz)
     r12 : np.array
         The distance vector between atoms for orbitals 1 and orbital 2.
     model_parameters : dict
@@ -224,7 +224,25 @@ def calculate_interaction_matrix(atomic_coordinates, model_parameters):
     return interaction_matrix
 
 def chi_on_atom(o1, o2, o3, model_parameters):
-    '''Returns the value of the chi tensor for 3 orbital indices on the same atom.'''
+    '''Calculates the value of the chi tensor for 3 orbital indices on the same atom.
+
+    This function calculates elements of the chi tensor matrix - used in `calculate_chi_tensor`
+    
+    Parameters
+    ----------
+    o1 : str
+        The type of orbital 1 (s, px, py, or pz)
+    o2 : str
+        The type of orbital 2 (s, px, py, or pz)
+    o3 : str 
+        The type of orbital 3 (s, px, py, or pz)
+    model_paraemeters: dict
+        The model parameters for the element of interest
+    
+    Returns
+    -------
+    float
+    '''
     if o1 == o2 and o3 == 's':
         return 1.0
     if o1 == o3 and o3 in p_orbitals and o2 == 's':
@@ -234,7 +252,20 @@ def chi_on_atom(o1, o2, o3, model_parameters):
     return 0.0
 
 def calculate_chi_tensor(atomic_coordinates, model_parameters):
-    '''Returns the chi tensor for an input list of atomic coordinates'''
+    '''Returns the chi tensor for an input list of atomic coordinates.
+    
+    Parameters
+    ----------
+    atomic_coordinates : np.array
+        The atomic coordinates - format np.array([n,3]), where n is the number of atoms and the columns correspond to the x, y, and z coordinates.
+    model_parameters : dict
+        The model parameters for the element of interest.
+
+    Returns
+    -------
+    np.array
+        The chi tensor
+    '''
     ndof = len(atomic_coordinates) * orbitals_per_atom
     chi_tensor = np.zeros((ndof, ndof, ndof))
     for p in range(ndof):
@@ -247,7 +278,21 @@ def calculate_chi_tensor(atomic_coordinates, model_parameters):
     return chi_tensor
 
 def calculate_hamiltonian_matrix(atomic_coordinates, model_parameters):
-    '''Returns the 1-body Hamiltonian matrix for an input list of atomic coordinates.'''
+    '''Returns the 1-body Hamiltonian matrix for an input list of atomic coordinates.
+    
+    Parameters
+    ----------
+    atomic_coordinates : np.array
+        The atomic coordinates - format np.array([n,3]), where n is the number of atoms and the columns correspond to the x, y, and z coordinates.
+    model_parameters : dict
+        The model parameters for the element of interest.
+
+    Returns
+    -------
+    np.array
+        The Hamiltonian matrix
+    
+    '''
     ndof = len(atomic_coordinates) * orbitals_per_atom
     hamiltonian_matrix = np.zeros((ndof, ndof))
     potential_vector = calculate_potential_vector(atomic_coordinates,
@@ -272,7 +317,17 @@ def calculate_hamiltonian_matrix(atomic_coordinates, model_parameters):
     return hamiltonian_matrix
 
 def calculate_atomic_density_matrix(atomic_coordinates):
-    '''Returns a trial 1-electron density matrix for an input list of atomic coordinates.'''
+    '''Returns a trial 1-electron density matrix for an input list of atomic coordinates.
+    
+    Parameters
+    ----------
+    atomic_coordinates : np.array
+        The atomic coordinates - format np.array([n,3]), where n is the number of atoms and the columns correspond to the x, y, and z coordinates.
+    
+    Returns
+    -------
+    np.array
+    '''
     ndof = len(atomic_coordinates) * orbitals_per_atom
     density_matrix = np.zeros((ndof, ndof))
     for p in range(ndof):
@@ -381,8 +436,10 @@ def calculate_energy_mp2(fock_matrix, interaction_matrix, chi_tensor):
     return energy_mp2
 
 ## --------------------
-## Noble Gas Parameters
+## Noble Gas Parameters 
 ## --------------------
+
+# Global variables for now.
 ionic_charge = 6
 orbital_types = ['s', 'px', 'py', 'pz']
 orbitals_per_atom = len(orbital_types)
