@@ -5,18 +5,34 @@ class Noble_Gas_Model:
     def __init__(self, gas_type):
         if ( gas_type == 'Argon' ):
             self.model_parameters = {
-                'r_hop': 5.0,
-                't_ss': -0.002,
-                't_sp': -0.004,
-                't_pp1': -0.006,
-                't_pp2': -0.008,
-                'r_pseudo': 6.0,
-                'v_pseudo': 0.5,
-                'dipole': 4.0,
-                'energy_s': 1.3,
-                'energy_p': 0.1,
-                'self_energy': 0.5
-            }
+                'r_hop' : 3.1810226927827516,
+                't_ss' : 0.03365982238611262,
+                't_sp' : -0.029154833035109226,
+                't_pp1' : -0.0804163845390335,
+                't_pp2' : -0.01393611496959445,
+                'r_pseudo' : 2.60342991362958,
+                'v_pseudo' : 0.022972992186364977,
+                'dipole' : 2.781629275106456,
+                'energy_s' : 3.1659446174413004,
+                'energy_p' : -2.3926873325346554,
+                'coulomb_s' : 0.3603533286088998,
+                'coulomb_p' : -0.003267991835806299
+                }
+        elif ( gas_type == 'Neon' ):
+            self.model_parameters = {
+                'coulomb_p': -0.010255409806855187,
+                'coulomb_s': 0.4536486561938202,
+                'dipole': 1.6692376991516769,
+                'energy_p': -3.1186533988406335,
+                'energy_s': 11.334912902362603,
+                'r_hop': 2.739689713337267,
+                'r_pseudo': 1.1800779720963734,
+                't_pp1': -0.029546671673199854,
+                't_pp2': -0.0041958662271044875,
+                't_sp': 0.000450562836426027,
+                't_ss': 0.0289251941290921,
+                'v_pseudo': -0.015945813280635074
+                }
         else:
             raise TypeError('Gas type ' + gas_type + ' not recognized.')
             
@@ -120,10 +136,12 @@ class Hartree_Fock:
                     r_pq = self.atomic_coordinates[self.gas_model.atom(p)] - self.atomic_coordinates[self.gas_model.atom(
                         q)]
                     interaction_matrix[p, q] = self.coulomb_energy(self.gas_model.orb(p), self.gas_model.orb(q), r_pq)
-                if p == q:
-                    interaction_matrix[p, q] = self.gas_model.model_parameters['self_energy']
+                if p == q and self.gas_model.orb(p) == 's':
+                    interaction_matrix[p, q] = self.gas_model.model_parameters['coulomb_s']
+                if p == q and self.gas_model.orb(p) in self.gas_model.p_orbitals:
+                    interaction_matrix[p, q] = self.gas_model.model_parameters['coulomb_p']
         return interaction_matrix
-    
+
     def coulomb_energy(self, o1, o2, r12):
         '''Calculate the Coulomb energy for a pair of multipoles of type o1 & o2 separated by a vector r12.
 
@@ -259,8 +277,8 @@ class Hartree_Fock:
         p_orbitals = self.gas_model.p_orbitals
 
         r12_rescaled = r12 / model_parameters['r_hop']
-        r12_squared = np.dot(r12_rescaled, r12_rescaled)
-        ans = np.exp(1.0 - r12_squared)
+        r12_length = np.linalg.norm(r12_rescaled)
+        ans = np.exp(1.0 - r12_length**2)
         if o1 == 's' and o2 == 's':
             ans *= model_parameters['t_ss']
         if o1 == 's' and o2 in p_orbitals:
@@ -268,12 +286,12 @@ class Hartree_Fock:
         if o2 == 's' and o1 in p_orbitals:
             ans *= -1 * np.dot(vec[o1], r12_rescaled) * model_parameters['t_sp']
         if o1 in p_orbitals and o2 in p_orbitals:
-            ans *= (r12_squared * np.dot(vec[o1], vec[o2]) *
+            ans *= ( (r12_length**2) * np.dot(vec[o1], vec[o2]) *
                     model_parameters['t_pp2'] -
                     np.dot(vec[o1], r12_rescaled) * np.dot(vec[o2], r12_rescaled) *
                     (model_parameters['t_pp1'] + model_parameters['t_pp2']))
         return ans
-    
+
     def calculate_hamiltonian_matrix(self):
         '''Returns the 1-body Hamiltonian matrix for an input list of atomic coordinates.
         

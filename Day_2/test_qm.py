@@ -6,17 +6,18 @@ import day_2 as qm
 @pytest.fixture
 def argon_model_parameters():
     model_parameters = {
-    'r_hop': 5.0,
-    't_ss': -0.002,
-    't_sp': -0.004,
-    't_pp1': -0.006,
-    't_pp2': -0.008,
-    'r_pseudo': 6.0,
-    'v_pseudo': 0.5,
-    'dipole': 4.0,
-    'energy_s': 1.3,
-    'energy_p': 0.1,
-    'self_energy': 0.5
+    'r_hop' : 3.1810226927827516,
+    't_ss' : 0.03365982238611262,
+    't_sp' : -0.029154833035109226,
+    't_pp1' : -0.0804163845390335,
+    't_pp2' : -0.01393611496959445,
+    'r_pseudo' : 2.60342991362958,
+    'v_pseudo' : 0.022972992186364977,
+    'dipole' : 2.781629275106456,
+    'energy_s' : 3.1659446174413004,
+    'energy_p' : -2.3926873325346554,
+    'coulomb_s' : 0.3603533286088998,
+    'coulomb_p' : -0.003267991835806299
     }
     return model_parameters
 
@@ -53,7 +54,7 @@ def test_hopping_energy(argon_model_parameters):
     orbital1 = 's'
     orbital2 = 'px'
     orbital_distance = np.array([5.0, 0.0, 0.0])
-    assert qm.hopping_energy(orbital1, orbital2, orbital_distance, argon_model_parameters) == -0.004
+    assert np.isclose(qm.hopping_energy(orbital1, orbital2, orbital_distance, argon_model_parameters) , -0.010530048141501309)
 
 @pytest.mark.parametrize("o1, o2, r12, coulomb_energy",[
     ('s', 's', np.array([1, 0, 0]), 1),
@@ -74,7 +75,7 @@ def test_scf_cycle(argon_model_parameters):
     hamiltonian_matrix = qm.calculate_hamiltonian_matrix(atomic_coordinates, argon_model_parameters)
     interaction_matrix = qm.calculate_interaction_matrix(atomic_coordinates, argon_model_parameters)
     density_matrix = qm.calculate_atomic_density_matrix(atomic_coordinates)
-    chi_tensor = qm. calculate_chi_tensor(atomic_coordinates, argon_model_parameters)
+    chi_tensor = qm.calculate_chi_tensor(atomic_coordinates, argon_model_parameters)
     fock_matrix = qm.calculate_fock_matrix(hamiltonian_matrix, interaction_matrix, density_matrix, chi_tensor)
     
     density_matrix, fock_matrix = qm.scf_cycle(hamiltonian_matrix, interaction_matrix, density_matrix, chi_tensor)
@@ -83,5 +84,5 @@ def test_scf_cycle(argon_model_parameters):
 
     calculated_energy = qm.calculate_energy_scf(hamiltonian_matrix, fock_matrix, density_matrix) + energy_ion
     
-    assert np.isclose(calculated_energy, -40.23578207295311)
+    assert np.isclose(calculated_energy, -17.901180613943193)
 

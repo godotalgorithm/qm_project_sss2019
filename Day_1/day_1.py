@@ -19,19 +19,18 @@ def ao_index(atom_p, orb_p):
 def hopping_energy(o1, o2, r12, model_parameters):
     '''Returns the hopping matrix element for a pair of orbitals of type o1 & o2 separated by a vector r12.'''
     r12_rescaled = r12 / model_parameters['r_hop']
-    r12_squared = np.dot(r12_rescaled, r12_rescaled)
-    ans = np.exp(1.0 - r12_squared)
+    r12_length = np.linalg.norm(r12_rescaled)
+    ans = np.exp( 1.0 - r12_length**2 )
     if o1 == 's' and o2 == 's':
         ans *= model_parameters['t_ss']
     if o1 == 's' and o2 in p_orbitals:
         ans *= np.dot(vec[o2], r12_rescaled) * model_parameters['t_sp']
     if o2 == 's' and o1 in p_orbitals:
-        ans *= -1 * np.dot(vec[o1], r12_rescaled) * model_parameters['t_sp']
+        ans *= -np.dot(vec[o1], r12_rescaled)* model_parameters['t_sp']
     if o1 in p_orbitals and o2 in p_orbitals:
-        ans *= (r12_squared * np.dot(vec[o1], vec[o2]) *
-                model_parameters['t_pp2'] -
-                np.dot(vec[o1], r12_rescaled) * np.dot(vec[o2], r12_rescaled) *
-                (model_parameters['t_pp1'] + model_parameters['t_pp2']))
+        ans *= ( (r12_length**2) * np.dot(vec[o1], vec[o2]) * model_parameters['t_pp2']
+                 - np.dot(vec[o1], r12_rescaled) * np.dot(vec[o2], r12_rescaled)
+                 * ( model_parameters['t_pp1'] + model_parameters['t_pp2'] ) )
     return ans
 
 def coulomb_energy(o1, o2, r12):
@@ -85,16 +84,17 @@ def calculate_potential_vector(atomic_coordinates, model_parameters):
 
 def calculate_interaction_matrix(atomic_coordinates, model_parameters):
     '''Returns the electron-electron interaction energy matrix for an input list of atomic coordinates.'''
-    ndof = len(atomic_coordinates) * orbitals_per_atom
-    interaction_matrix = np.zeros((ndof, ndof))
+    ndof = len(atomic_coordinates)*orbitals_per_atom
+    interaction_matrix = np.zeros( (ndof,ndof) )
     for p in range(ndof):
         for q in range(ndof):
             if atom(p) != atom(q):
-                r_pq = atomic_coordinates[atom(p)] - atomic_coordinates[atom(
-                    q)]
-                interaction_matrix[p, q] = coulomb_energy(orb(p), orb(q), r_pq)
-            if p == q:
-                interaction_matrix[p, q] = model_parameters['self_energy']
+                r_pq = atomic_coordinates[atom(p)] - atomic_coordinates[atom(q)]
+                interaction_matrix[p,q] = coulomb_energy(orb(p), orb(q), r_pq)
+            if p == q and orb(p) == 's':
+                interaction_matrix[p,q] = model_parameters['coulomb_s']
+            if p == q and orb(p) in p_orbitals:
+                interaction_matrix[p,q] = model_parameters['coulomb_p']                
     return interaction_matrix
 
 def chi_on_atom(o1, o2, o3, model_parameters):
@@ -181,25 +181,22 @@ def calculate_density_matrix(fock_matrix):
     return density_matrix
 
 def scf_cycle(hamiltonian_matrix, interaction_matrix, density_matrix,
-              chi_tensor):
+              chi_tensor, max_scf_iterations = 100,
+              mixing_fraction = 0.25, convergence_tolerance = 1e-4):
     '''Returns converged density & Fock matrices defined by the input Hamiltonian, interaction, & density matrices.'''
-    MAX_SCF_ITERATIONS = 100
-    MIXING_FRACTION = 0.25
-    CONVERGENCE_TOLERANCE = 1e-4
-    for iteration in range(MAX_SCF_ITERATIONS):
-        fock_matrix = calculate_fock_matrix(hamiltonian_matrix,
-                                            interaction_matrix, density_matrix,
-                                            chi_tensor)
-        new_density_matrix = calculate_density_matrix(fock_matrix)
+    old_density_matrix = density_matrix.copy()
+    for iteration in range(max_scf_iterations):
+        new_fock_matrix = calculate_fock_matrix(hamiltonian_matrix, interaction_matrix, old_density_matrix, chi_tensor)
+        new_density_matrix = calculate_density_matrix(new_fock_matrix)
 
-        error_norm = np.linalg.norm(density_matrix - new_density_matrix)
-        if error_norm < CONVERGENCE_TOLERANCE:
-            return density_matrix, fock_matrix
+        error_norm = np.linalg.norm( old_density_matrix - new_density_matrix )
+        if error_norm < convergence_tolerance:
+            return new_density_matrix, new_fock_matrix
 
-        density_matrix = (MIXING_FRACTION * new_density_matrix +
-                          (1.0 - MIXING_FRACTION) * density_matrix)
-    print("SCF cycle didn't converge")
-    return density_matrix, fock_matrix
+        old_density_matrix = (mixing_fraction * new_density_matrix
+                              + (1.0 - mixing_fraction) * old_density_matrix)
+    print("WARNING: SCF cycle didn't converge")
+    return new_density_matrix, new_fock_matrix
 
 def calculate_energy_scf(hamiltonian_matrix, fock_matrix, density_matrix):
     '''Returns the Hartree-Fock total energy defined by the input Hamiltonian, Fock, & density matrices.'''
@@ -274,17 +271,18 @@ if __name__ == "__main__":
 
     # Argon parameters - these would change for other noble gases.
     model_parameters = {
-    'r_hop': 5.0,
-    't_ss': -0.002,
-    't_sp': -0.004,
-    't_pp1': -0.006,
-    't_pp2': -0.008,
-    'r_pseudo': 6.0,
-    'v_pseudo': 0.5,
-    'dipole': 4.0,
-    'energy_s': 1.3,
-    'energy_p': 0.1,
-    'self_energy': 0.5
+    'r_hop' : 3.1810226927827516,
+    't_ss' : 0.03365982238611262,
+    't_sp' : -0.029154833035109226,
+    't_pp1' : -0.0804163845390335,
+    't_pp2' : -0.01393611496959445,
+    'r_pseudo' : 2.60342991362958,
+    'v_pseudo' : 0.022972992186364977,
+    'dipole' : 2.781629275106456,
+    'energy_s' : 3.1659446174413004,
+    'energy_p' : -2.3926873325346554,
+    'coulomb_s' : 0.3603533286088998,
+    'coulomb_p' : -0.003267991835806299
     }
     
     # Start energy calculation
