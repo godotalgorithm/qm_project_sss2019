@@ -189,7 +189,7 @@ class Hartree_Fock:
         for p in range(self.ndof):
             potential_vector[p] = 0.0
             for atom_i, r_i in enumerate(self.atomic_coordinates):
-                r_pi = atomic_coordinates[self.gas_model.atom(p)] - r_i
+                r_pi = self.atomic_coordinates[self.gas_model.atom(p)] - r_i
                 if atom_i != self.gas_model.atom(p):
                     potential_vector[p] += (
                         self.pseudopotential_energy(self.gas_model.orb(p), r_pi) -
