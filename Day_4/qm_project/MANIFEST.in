@@ -1,0 +1,7 @@
+include LICENSE
+include MANIFEST.in
+include versioneer.py
+
+graft qm_project
+global-exclude *.py[cod] __pycache__ *.so
+recursive-include mm_cpp *.hpp
